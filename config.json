@@ -1,0 +1,7 @@
+{
+  "satellite_limit": 10,
+  "stations": [
+    "Station_North",
+    "Station_South"
+  ]
+}

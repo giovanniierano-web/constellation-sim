@@ -1,47 +1,65 @@
-from fastapi import FastAPI
-from fastapi.responses import FileResponse
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import FileResponse, HTMLResponse
 from simulator.simulator import MissionSimulator
 from simulator.visualizer import ScheduleVisualizer
+import traceback
 import os
 
-app = FastAPI(title="Constellation Mission Control API", version="1.0.0")
+app = FastAPI(
+    title="Galileo Constellation Simulator API",
+    description="Industrial-grade Galileo constellation and ground station contact scheduler.",
+    version="2.0"
+)
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Constellation Simulation and Planning API"}
+@app.get("/", response_class=HTMLResponse)
+def root():
+    return """
+    <html>
+        <head><title>Galileo Constellation Simulator</title></head>
+        <body style="font-family: Arial, sans-serif; margin: 40px;">
+            <h1>🛰️ Galileo Constellation Simulator API</h1>
+            <p>Welcome to the mission scheduling simulator API.</p>
+            <ul>
+                <li><a href="/docs">Swagger API Documentation (/docs)</a></li>
+                <li><a href="/chart">View Mission Schedule Gantt Chart (/chart)</a></li>
+            </ul>
+        </body>
+    </html>
+    """
 
 @app.post("/simulate")
 def run_simulation():
-    sim = MissionSimulator()
-    schedule = sim.run_default_scenario()
-    
-    result = [
-        {
-            "satellite": r.sat_id,
-            "station": r.station_name,
-            "start_time": r.start_time.isoformat(),
-            "end_time": r.end_time.isoformat(),
-            "priority": r.priority
+    try:
+        simulator = MissionSimulator()
+        schedule = simulator.run_default_scenario()
+        
+        # Genera il diagramma di Gantt con le durate effettive
+        visualizer = ScheduleVisualizer()
+        visualizer.plot_schedule(schedule, filename="mission_schedule.png")
+        
+        return {
+            "status": "success",
+            "scheduled_contacts_count": len(schedule),
+            "config_used": simulator.config,
+            "schedule": schedule
         }
-        for r in schedule
-    ]
-    
-    return {
-        "status": "success",
-        "scheduled_contacts_count": len(result),
-        "schedule": result
-    }
+    except Exception as e:
+        # Stampa l'errore completo nel terminale per il debug immediato
+        print("\n--- ERROR DURING SIMULATION ---")
+        traceback.print_exc()
+        print("-------------------------------\n")
+        raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/simulate/plot")
-def generate_schedule_plot():
-    """Generates and returns a Gantt chart image of the optimized mission schedule."""
-    sim = MissionSimulator()
-    schedule = sim.run_default_scenario()
-    
-    plot_filename = "mission_schedule.png"
-    ScheduleVisualizer.plot_schedule(schedule, filename=plot_filename)
-    
-    if os.path.exists(plot_filename):
-        return FileResponse(plot_filename, media_type="image/png", filename="mission_schedule.png")
-    
-    return {"status": "error", "message": "Failed to generate schedule plot."}
+@app.get("/chart", response_class=FileResponse)
+def get_chart():
+    chart_path = "mission_schedule.png"
+    if not os.path.exists(chart_path):
+        # Se non esiste ancora, prova a generarla al volo
+        try:
+            simulator = MissionSimulator()
+            schedule = simulator.run_default_scenario()
+            ScheduleVisualizer.plot_schedule(schedule, filename=chart_path)
+        except Exception:
+            raise HTTPException(status_code=404, detail="Schedule chart not found. Run POST /simulate first.")
+            
+    return FileResponse(chart_path, media_type="image/png", filename="mission_schedule.png")
