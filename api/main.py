@@ -1,5 +1,8 @@
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
 from simulator.simulator import MissionSimulator
+from simulator.visualizer import ScheduleVisualizer
+import os
 
 app = FastAPI(title="Constellation Mission Control API", version="1.0.0")
 
@@ -28,3 +31,17 @@ def run_simulation():
         "scheduled_contacts_count": len(result),
         "schedule": result
     }
+
+@app.post("/simulate/plot")
+def generate_schedule_plot():
+    """Generates and returns a Gantt chart image of the optimized mission schedule."""
+    sim = MissionSimulator()
+    schedule = sim.run_default_scenario()
+    
+    plot_filename = "mission_schedule.png"
+    ScheduleVisualizer.plot_schedule(schedule, filename=plot_filename)
+    
+    if os.path.exists(plot_filename):
+        return FileResponse(plot_filename, media_type="image/png", filename="mission_schedule.png")
+    
+    return {"status": "error", "message": "Failed to generate schedule plot."}
