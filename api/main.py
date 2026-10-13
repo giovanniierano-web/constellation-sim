@@ -33,9 +33,8 @@ def run_simulation():
         simulator = MissionSimulator()
         schedule = simulator.run_default_scenario()
         
-        # Genera il diagramma di Gantt con le durate effettive
-        visualizer = ScheduleVisualizer()
-        visualizer.plot_schedule(schedule, filename="mission_schedule.png")
+        # Genera il diagramma di Gantt usando il metodo corretto
+        ScheduleVisualizer.plot_schedule(schedule, filename="mission_schedule.png")
         
         return {
             "status": "success",
@@ -44,7 +43,6 @@ def run_simulation():
             "schedule": schedule
         }
     except Exception as e:
-        # Stampa l'errore completo nel terminale per il debug immediato
         print("\n--- ERROR DURING SIMULATION ---")
         traceback.print_exc()
         print("-------------------------------\n")
@@ -54,7 +52,6 @@ def run_simulation():
 def get_chart():
     chart_path = "mission_schedule.png"
     if not os.path.exists(chart_path):
-        # Se non esiste ancora, prova a generarla al volo
         try:
             simulator = MissionSimulator()
             schedule = simulator.run_default_scenario()

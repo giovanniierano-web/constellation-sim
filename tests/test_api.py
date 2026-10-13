@@ -4,13 +4,13 @@ from api.main import app
 client = TestClient(app)
 
 def test_read_root():
-    """Test the root endpoint of the API."""
+    """Test the root endpoint of the API returns the HTML dashboard."""
     response = client.get("/")
     assert response.status_code == 200
-    assert response.json() == {"message": "Welcome to the Constellation Simulation and Planning API"}
+    assert "Galileo Constellation Simulator" in response.text
 
 def test_run_simulation():
-    """Test the simulation endpoint using real/fallback TLE data and verify JSON structure."""
+    """Test the simulation endpoint and verify JSON structure."""
     response = client.post("/simulate")
     assert response.status_code == 200
     
@@ -20,11 +20,10 @@ def test_run_simulation():
     assert "schedule" in data
     assert isinstance(data["schedule"], list)
     
-    # If the simulation generated contacts, check their structure
     if data["scheduled_contacts_count"] > 0:
         first_contact = data["schedule"][0]
-        assert "satellite" in first_contact
-        assert "station" in first_contact
+        assert "sat_id" in first_contact
+        assert "station_name" in first_contact
         assert "start_time" in first_contact
         assert "end_time" in first_contact
         assert "priority" in first_contact
